@@ -21,42 +21,49 @@ class an_recurringpaymentsCronModuleFrontController extends
 
         foreach ($recurrings as $recurring) {
             $next = $recurring->getPaymentData();
-            $period = $recurring->getPeriod();
+            if ($next['finished']) {
+                continue;
+            }
+
             $paymentDate = $next['payment'];
             $deliveryDate = $next['delivery'];
 
-            // Original Payment Due Date logic
+            $deliveryDateObj = DateTime::createFromFormat('Y-m-d', $deliveryDate);
+            if (!$deliveryDateObj) {
+                continue;
+            }
+
             $sendEmail = false;
-            $additionalMessage = '';
 
-            // 1. Payment Warning (original)
-            if ($today == $paymentDate && !$next['finished']) {
+            $deliveryMinus5 = (clone $deliveryDateObj)->modify('-5 days')->format('Y-m-d');
+            $deliveryMinus1 = (clone $deliveryDateObj)->modify('-1 day')->format('Y-m-d');
+
+            if ($today == $deliveryMinus5 || $today == $deliveryMinus1 || $today == $paymentDate) {
                 $sendEmail = true;
-                $additionalMessage = ''; 
-            }
-
-            // 2. Mid-period Reminder
-            // Calculate halfway date between Payment Due Date and Expiry (Delivery) Date
-            if ($period->require_payment_before > 0 && !$next['finished']) {
-                 $daysDifference = (strtotime($deliveryDate) - strtotime($paymentDate)) / (60 * 60 * 24);
-                 $halfDays = floor($daysDifference / 2);
-                 if ($halfDays > 0) {
-                     $midDate = date('Y-m-d', strtotime('+' . $halfDays . ' days', strtotime($paymentDate)));
-                     if ($today == $midDate) {
-                         $sendEmail = true;
-                         $additionalMessage = 'Friendly reminder: your subscription renewal is coming up. To ensure uninterrupted service, please complete payment soon.';
-                     }
-                 }
-            }
-
-            // 3. Expiry Day Reminder
-            if ($today == $deliveryDate && !$next['finished']) {
-                $sendEmail = true;
-                $additionalMessage = 'Your subscription expires today. Please finalize payment to avoid service interruption.';
             }
 
             if (!$sendEmail) {
                 continue;
+            }
+
+            $daysUntilExpiry = (int)(new DateTime($today))->diff($deliveryDateObj)->format('%r%a');
+            if ($daysUntilExpiry < 0) {
+                continue;
+            }
+
+            if ($daysUntilExpiry === 0) {
+                $additionalMessage = $this->module->l(
+                    'Just a friendly reminder: to keep your service active, please complete the payment today. If payment is not completed today, the service will be suspended.'
+                );
+            } else {
+                $dayLabel = $daysUntilExpiry === 1 ? $this->module->l('day') : $this->module->l('days');
+                $additionalMessage = sprintf(
+                    $this->module->l(
+                        'Just a friendly reminder: to keep your service active, please complete the payment. If payment is not completed within the next %d %s, the service will be suspended.'
+                    ),
+                    $daysUntilExpiry,
+                    $dayLabel
+                );
             }
 
             $customer = $recurring->getCustomer();
