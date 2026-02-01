@@ -26,7 +26,6 @@
 					<th class="item">{l s='Status' mod='an_recurringpayments'}</th>
 					<th class="item">{l s='First Delivery' mod='an_recurringpayments'}</th>
 					<th class="item">{l s='Next Payment' mod='an_recurringpayments'}</th>
-					<th class="item">{l s='Next Delivery' mod='an_recurringpayments'}</th>
 					<th class="last_item" style="width:65px"></th>
 				</tr>
 			</thead>
@@ -46,15 +45,19 @@
 							</form>
 						</td>
 						<td>{$sub->getPeriod()->name|escape:'htmlall':'UTF-8'}</td>
-						<td>{if $sub->status}
-								<span class="label" style="background-color:#32CD32; border-color:#32CD32;">{l s='Active' mod='an_recurringpayments'}</span>
+						<td>
+							{if $sub->vps_is_suspended}
+								<span class="label" style="background-color:#dc3545; border-color:#dc3545;">{l s='Suspended' mod='an_recurringpayments'}</span>
 							{else}
-								<span class="label" style="background-color:#4169E1; border-color:#4169E1;">{l s='Disabled' mod='an_recurringpayments'}</span>
+								{if $sub->status}
+									<span class="label" style="background-color:#32CD32; border-color:#32CD32;">{l s='Active' mod='an_recurringpayments'}</span>
+								{else}
+									<span class="label" style="background-color:#4169E1; border-color:#4169E1;">{l s='Disabled' mod='an_recurringpayments'}</span>
+								{/if}
 							{/if}
 						</td>
 						<td>{Tools::displayDate($sub->start_date)|escape:'htmlall':'UTF-8'}</td>
 						<td>{Tools::displayDate($paymentData.payment)|escape:'htmlall':'UTF-8'}</td>
-						<td>{Tools::displayDate($paymentData.delivery)|escape:'htmlall':'UTF-8'}</td>
 						<td>
 							{if $sub->status}
 								<a href="{$link->getModuleLink('an_recurringpayments', 'account', ['action' => 'changeStatus', 'id' => $sub->id])|escape:'html':'UTF-8'}" title="{l s='Disable' mod='an_recurringpayments'}" class="btn btn-default button button-small"><span>{l s='Disable' mod='an_recurringpayments'}</span></a>

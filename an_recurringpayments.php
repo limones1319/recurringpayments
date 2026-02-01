@@ -420,6 +420,21 @@ class an_recurringpayments extends Module
             // OLD $params['cart']->id
             Db::getInstance()->execute('UPDATE `'. pSQL(self::getPrefix()).'recurringpayment` SET `status` = 1 WHERE `id_cart` = '.(int) $id_cart);
 
+            $rows = Db::getInstance()->executeS(
+                'SELECT `id_an_rps_recurringpayment` FROM `'. pSQL(self::getPrefix()) .'recurringpayment_orders`'
+                . ' WHERE `id_cart` = ' . (int)$id_cart
+            );
+            if (!empty($rows)) {
+                $ids = array();
+                foreach ($rows as $row) {
+                    $ids[] = (int)$row['id_an_rps_recurringpayment'];
+                }
+                Db::getInstance()->execute(
+                    'UPDATE `'. pSQL(self::getPrefix()).'recurringpayment` SET `status` = 1'
+                    . ' WHERE `id_an_rps_recurringpayment` IN (' . implode(',', $ids) . ')'
+                );
+            }
+
         }
     }
 
@@ -428,6 +443,21 @@ class an_recurringpayments extends Module
         if ($params['orderStatus']->id == Configuration::get('an_recurringpayments_status_activator', null, null, null,2)) {
             $id_cart = OrderCore::getCartIdStatic($params['id_order']);
             Db::getInstance()->execute('UPDATE `'. pSQL(self::getPrefix()).'recurringpayment` SET `status` = 1 WHERE `id_cart` = '.(int) $id_cart);
+
+            $rows = Db::getInstance()->executeS(
+                'SELECT `id_an_rps_recurringpayment` FROM `'. pSQL(self::getPrefix()) .'recurringpayment_orders`'
+                . ' WHERE `id_cart` = ' . (int)$id_cart
+            );
+            if (!empty($rows)) {
+                $ids = array();
+                foreach ($rows as $row) {
+                    $ids[] = (int)$row['id_an_rps_recurringpayment'];
+                }
+                Db::getInstance()->execute(
+                    'UPDATE `'. pSQL(self::getPrefix()).'recurringpayment` SET `status` = 1'
+                    . ' WHERE `id_an_rps_recurringpayment` IN (' . implode(',', $ids) . ')'
+                );
+            }
         }
     }
 

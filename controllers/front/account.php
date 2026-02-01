@@ -74,10 +74,27 @@ class an_recurringpaymentsAccountModuleFrontController extends
         }
 
         if (Context::getContext()->customer->id) {
-            $this->context->smarty->assign(
-                'myrecurringpayments',
-                AnRecurringPayments::getCustomerRecurringPayments(Context::getContext()->customer->id)
-            );
+            $subs = AnRecurringPayments::getCustomerRecurringPayments(Context::getContext()->customer->id);
+            $orchestrator = Module::getInstanceByName('orchestrateproxmox');
+            $customerId = (int)Context::getContext()->customer->id;
+
+            foreach ($subs as $sub) {
+                $vpsStatus = null;
+                if ($orchestrator && method_exists($orchestrator, 'getVpsStatusForRecurringPayment')) {
+                    $vpsStatus = $orchestrator->getVpsStatusForRecurringPayment(
+                        $sub->id,
+                        $customerId,
+                        $sub->id_product_attribute
+                    );
+                }
+                if (is_array($vpsStatus) && array_key_exists('is_suspended', $vpsStatus)) {
+                    $sub->vps_is_suspended = (bool)$vpsStatus['is_suspended'];
+                } else {
+                    $sub->vps_is_suspended = false;
+                }
+            }
+
+            $this->context->smarty->assign('myrecurringpayments', $subs);
             if ($this->module->new) {
                 $this->setTemplate('module:an_recurringpayments/views/templates/front/account.tpl');
             } else {

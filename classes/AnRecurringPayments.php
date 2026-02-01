@@ -165,7 +165,8 @@ class AnRecurringPayments extends ObjectModel
             'cart` ca ON (ca.`id_cart` = a.`id_cart`)
             LEFT JOIN `' . _DB_PREFIX_ .
             'customer` cu ON (ca.`id_customer` = cu.`id_customer`)
-            WHERE cu.`id_customer` = ' . (int)$id_customer;
+            WHERE cu.`id_customer` = ' . (int)$id_customer . '
+            ORDER BY a.`id_an_rps_recurringpayment` DESC';
 
         $subList = array();
         $result = Db::getInstance()->ExecuteS($sql);
