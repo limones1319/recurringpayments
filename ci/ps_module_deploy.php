@@ -98,30 +98,56 @@ if (!$module) {
     exit(2);
 }
 
-$upgrade = null;
-$needUpgrade = Module::initUpgradeModule($module);
-if ($needUpgrade) {
-    $upgrade = $module->runUpgradeModule();
-    $success = !empty($upgrade['success'])
-        && empty($upgrade['version_fail'])
-        && (int)$upgrade['number_upgrade_left'] === 0;
-    if (!$success) {
-        rrmdir($tmpDir);
-        fwrite(STDERR, "Upgrade failed for {$moduleName}\n");
-        echo json_encode($upgrade, JSON_PRETTY_PRINT);
-        exit(1);
+$db = Db::getInstance();
+$installedVersion = $db->getValue(
+    'SELECT `version` FROM `' . _DB_PREFIX_ . 'module` WHERE `name` = \'' . pSQL($moduleName) . '\''
+);
+$codeVersion = $module->version;
+$upgrade = [
+    'installed_version' => $installedVersion,
+    'applied' => [],
+];
+
+if ($installedVersion && version_compare($codeVersion, $installedVersion, '>')) {
+    $upgradeDir = _PS_MODULE_DIR_ . $moduleName . '/upgrade';
+    if (is_dir($upgradeDir)) {
+        $files = glob($upgradeDir . '/install-*.php');
+        $versions = [];
+        foreach ($files as $file) {
+            if (preg_match('/install-([0-9.]+)\\.php$/', $file, $m)) {
+                $versions[$m[1]] = $file;
+            }
+        }
+        uksort($versions, 'version_compare');
+        foreach ($versions as $ver => $file) {
+            if (version_compare($ver, $installedVersion, '>') && version_compare($ver, $codeVersion, '<=')) {
+                include_once $file;
+                $fn = 'upgrade_module_' . str_replace('.', '_', $ver);
+                if (function_exists($fn)) {
+                    $ok = (bool)$fn($module);
+                    if (!$ok) {
+                        rrmdir($tmpDir);
+                        fwrite(STDERR, "Upgrade failed at {$ver} for {$moduleName}\n");
+                        exit(1);
+                    }
+                    $upgrade['applied'][] = $ver;
+                }
+            }
+        }
     }
-} elseif (version_compare($module->version, $module->database_version, '>')) {
-    Module::upgradeModuleVersion($moduleName, $module->version);
+    Module::upgradeModuleVersion($moduleName, $codeVersion);
 }
 
 $module = Module::getInstanceByName($moduleName);
+$dbVersion = $db->getValue(
+    'SELECT `version` FROM `' . _DB_PREFIX_ . 'module` WHERE `name` = \'' . pSQL($moduleName) . '\''
+);
 rrmdir($tmpDir);
 
 echo json_encode([
     'ok' => true,
     'module' => $moduleName,
     'code_version' => $module->version,
-    'db_version' => $module->database_version,
+    'db_version' => $dbVersion,
     'upgrade' => $upgrade,
 ], JSON_PRETTY_PRINT);
