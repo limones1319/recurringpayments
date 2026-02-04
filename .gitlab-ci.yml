@@ -1,0 +1,61 @@
+stages:
+  - deploy
+
+variables:
+  MODULE_NAME: "an_recurringpayments"
+  CONTAINER_NAME: "presta_pi"
+  DEPLOY_USER: "root"
+  DEPLOY_SSH_PORT: "22"
+
+.deploy_template: &deploy_template
+  stage: deploy
+  image: alpine:3.20
+  before_script:
+    - apk add --no-cache openssh-client rsync zip
+    - eval "$(ssh-agent -s)"
+    - |
+      if [ -f "$SSH_PRIVATE_KEY" ]; then
+        tr -d '\r' < "$SSH_PRIVATE_KEY" | ssh-add -
+      else
+        echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+      fi
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -p "$DEPLOY_SSH_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+  script:
+    - ZIP_NAME="${MODULE_NAME}.zip"
+    - mkdir -p "dist/${MODULE_NAME}"
+    - |
+      rsync -a --delete \
+        --exclude=".git/" \
+        --exclude=".gitlab-ci.yml" \
+        --exclude="dist/" \
+        --exclude="ci/" \
+        ./ "dist/${MODULE_NAME}/"
+    - (cd dist && zip -r "$ZIP_NAME" "$MODULE_NAME")
+    - scp -P "$DEPLOY_SSH_PORT" "dist/${ZIP_NAME}" "$DEPLOY_USER@$DEPLOY_HOST:/tmp/${ZIP_NAME}"
+    - scp -P "$DEPLOY_SSH_PORT" "ci/ps_module_deploy.php" "$DEPLOY_USER@$DEPLOY_HOST:/tmp/ps_module_deploy.php"
+    - |
+      ssh -T -p "$DEPLOY_SSH_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+        "docker cp /tmp/${ZIP_NAME} ${CONTAINER_NAME}:/tmp/${ZIP_NAME} && \
+         docker cp /tmp/ps_module_deploy.php ${CONTAINER_NAME}:/tmp/ps_module_deploy.php"
+    - |
+      ssh -T -p "$DEPLOY_SSH_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+        "docker exec ${CONTAINER_NAME} php /tmp/ps_module_deploy.php ${MODULE_NAME} /tmp/${ZIP_NAME}"
+    - |
+      ssh -T -p "$DEPLOY_SSH_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+        "docker exec ${CONTAINER_NAME} sh -lc 'grep -q \"suspendVmForRecurringPayment\" /var/www/html/modules/an_recurringpayments/controllers/front/cron.php'"
+
+deploy_test:
+  <<: *deploy_template
+  variables:
+    DEPLOY_HOST: "192.168.10.100"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "test" && $CI_PIPELINE_SOURCE == "push"'
+
+deploy_main:
+  <<: *deploy_template
+  variables:
+    DEPLOY_HOST: "86.120.70.180"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
