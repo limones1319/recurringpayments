@@ -52,18 +52,13 @@
 								{if $sub->status}
 									<span class="label" style="background-color:#32CD32; border-color:#32CD32;">{l s='Active' mod='an_recurringpayments'}</span>
 								{else}
-									<span class="label" style="background-color:#4169E1; border-color:#4169E1;">{l s='Disabled' mod='an_recurringpayments'}</span>
+									<span class="label" style="background-color:#4169E1; border-color:#4169E1;">{l s='Cancelled' mod='an_recurringpayments'}</span>
 								{/if}
 							{/if}
 						</td>
 						<td>{Tools::displayDate($sub->start_date)|escape:'htmlall':'UTF-8'}</td>
 						<td>{Tools::displayDate($paymentData.payment)|escape:'htmlall':'UTF-8'}</td>
 						<td>
-							{if $sub->status}
-								<a href="{$link->getModuleLink('an_recurringpayments', 'account', ['action' => 'changeStatus', 'id' => $sub->id])|escape:'html':'UTF-8'}" title="{l s='Disable' mod='an_recurringpayments'}" class="btn btn-default button button-small"><span>{l s='Disable' mod='an_recurringpayments'}</span></a>
-							{else}
-								<a href="{$link->getModuleLink('an_recurringpayments', 'account', ['action' => 'changeStatus', 'id' => $sub->id])|escape:'html':'UTF-8'}" title="{l s='Enable' mod='an_recurringpayments'}" class="btn btn-default button button-small"><span>{l s='Enable' mod='an_recurringpayments'}</span></a>
-							{/if}<br><br>
 							<a href="{$link->getModuleLink('an_recurringpayments', 'account', ['action' => 'delete', 'id' => $sub->id])|escape:'html':'UTF-8'}" onclick="return confirm('{l s='Are you sure?' mod='an_recurringpayments'}')" class="btn btn-default button button-small"><span>{l s='Cancel' mod='an_recurringpayments'}</span></a>
 						</td>
 					</tr>

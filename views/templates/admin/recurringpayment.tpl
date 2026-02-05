@@ -83,7 +83,7 @@
 					{if $an_obj->status eq 1}
 						<span class="label" style="background-color:#32CD32; border-color:#32CD32;">{l s='Active' mod='an_recurringpayments'}</span>
 					{else}
-						<span class="label" style="background-color:#4169E1; border-color:#4169E1;">{l s='Disabled' mod='an_recurringpayments'}</span>
+						<span class="label" style="background-color:#4169E1; border-color:#4169E1;">{l s='Cancelled' mod='an_recurringpayments'}</span>
 					{/if}
 				</p>
 			</div>							

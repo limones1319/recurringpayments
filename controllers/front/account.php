@@ -37,7 +37,26 @@ class an_recurringpaymentsAccountModuleFrontController extends
 
     private function deleteAction($_sub)
     {
-        return $_sub->delete();
+        $customerId = (int)Context::getContext()->customer->id;
+        $orchestrator = Module::getInstanceByName('orchestrateproxmox');
+        $suspendOk = false;
+
+        if ($orchestrator && method_exists($orchestrator, 'suspendVmForRecurringPayment')) {
+            $suspendOk = (bool)$orchestrator->suspendVmForRecurringPayment(
+                $_sub->id,
+                $customerId,
+                $_sub->id_product_attribute,
+                'cancel',
+                'customer'
+            );
+        }
+
+        if (!$suspendOk) {
+            return false;
+        }
+
+        $_sub->status = 0;
+        return $_sub->save();
     }
 
     public function postProcess()
@@ -88,7 +107,8 @@ class an_recurringpaymentsAccountModuleFrontController extends
                     );
                 }
                 if (is_array($vpsStatus) && array_key_exists('is_suspended', $vpsStatus)) {
-                    $sub->vps_is_suspended = (bool)$vpsStatus['is_suspended'];
+                    $reason = array_key_exists('reason', $vpsStatus) ? $vpsStatus['reason'] : null;
+                    $sub->vps_is_suspended = ((bool)$vpsStatus['is_suspended'] && $reason === 'nonpayment');
                 } else {
                     $sub->vps_is_suspended = false;
                 }
